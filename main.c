@@ -1,3 +1,4 @@
+# if 0
 /*
 	Copyright 2016 - 2021 Benjamin Vedder	benjamin@vedder.se
 
@@ -313,3 +314,33 @@ int main(void) {
 		chThdSleepMilliseconds(10);
 	}
 }
+#else
+#include "ch.h"
+#include "hal.h"
+
+static THD_WORKING_AREA(waThread1, 128);
+static THD_FUNCTION(Thread1, arg)
+{
+    (void)arg;
+    chRegSetThreadName("blinker");
+    while (true) {
+        //palTogglePad(PAC55XX_GPIOE, 0);
+        chThdSleepMilliseconds(500);
+        //palTogglePad(PAC55XX_GPIOE, 0);
+        chThdSleepMilliseconds(500);
+    }
+}
+
+int main(void)
+{
+    halInit();
+    chSysInit();
+
+    chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+
+    while (true)
+    {
+        chThdSleepMilliseconds(500);
+    }
+}
+#endif

@@ -4,10 +4,21 @@
 #
 
 USE_LISPBM=1
+CONFDIR=ChibiOSConfig/STM32
+USE_LTO = no
+USE_FPU = hard
+USE_PROCESS_STACKSIZE = 0x800
+USE_EXCEPTIONS_STACKSIZE = 0x800
+USE_VERBOSE_COMPILE = yes
+
+USE_LISPBM = 0 # TODO: Temporary turned off
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16 -std=gnu99 -D_GNU_SOURCE
+  # Original options from ChibiOS
+  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
+  # Additional options for the project
+  USE_OPT += -std=gnu99 -D_GNU_SOURCE
   USE_OPT += -DBOARD_OTG_NOVBUSSENS $(build_args)
   USE_OPT += -fsingle-precision-constant -Wdouble-promotion -specs=nosys.specs
 endif
@@ -22,7 +33,7 @@ ifeq ($(USE_CPPOPT),)
   USE_CPPOPT = -fno-rtti
 endif
 
-# Enable this if you want the linker to remove unused code and data
+# Enable this if you want the linker to remove unused code and data.
 ifeq ($(USE_LINK_GC),)
   USE_LINK_GC = yes
 endif
@@ -32,15 +43,16 @@ ifeq ($(USE_LDOPT),)
   USE_LDOPT = 
 endif
 
-# Enable this if you want link time optimizations (LTO)
+# Enable this if you want link time optimizations (LTO).
 ifeq ($(USE_LTO),)
-  USE_LTO = no
+  USE_LTO = yes
 endif
 
+# TODO: Hm wav deleted in updated ChibiOS.
 # If enabled, this option allows to compile the application in THUMB mode.
-ifeq ($(USE_THUMB),)
-  USE_THUMB = yes
-endif
+#ifeq ($(USE_THUMB),)
+#  USE_THUMB = yes
+#endif
 
 # Enable this if you want to see the full log while compiling.
 ifeq ($(USE_VERBOSE_COMPILE),)
@@ -64,47 +76,76 @@ endif
 # Stack size to be allocated to the Cortex-M process stack. This stack is
 # the stack used by the main() thread.
 ifeq ($(USE_PROCESS_STACKSIZE),)
-  USE_PROCESS_STACKSIZE = 0x800
+  USE_PROCESS_STACKSIZE = 0x400
 endif
 
 # Stack size to the allocated to the Cortex-M main/exceptions stack. This
 # stack is used for processing interrupts and exceptions.
 ifeq ($(USE_EXCEPTIONS_STACKSIZE),)
-  USE_EXCEPTIONS_STACKSIZE = 0x800
+  USE_EXCEPTIONS_STACKSIZE = 0x400
 endif
 
-# Enables the use of FPU on Cortex-M4 (no, softfp, hard).
+# Enables the use of FPU (no, softfp, hard).
 ifeq ($(USE_FPU),)
-  USE_FPU = hard
+  USE_FPU = no
 endif
 
-# Enable this if you really want to use the STM FWLib.
-ifeq ($(USE_FWLIB),)
-  USE_FWLIB = yes
+# FPU-related options.
+ifeq ($(USE_FPU_OPT),)
+  USE_FPU_OPT = -mfloat-abi=$(USE_FPU) -mfpu=fpv4-sp-d16
 endif
+
+# TODO: Hm was deleted in new version of Chibios
+# Enable this if you really want to use the STM FWLib.
+#ifeq ($(USE_FWLIB),)
+#  USE_FWLIB = yes
+#endif
 
 #
 # Architecture or project specific options
 ##############################################################################
 
 ##############################################################################
-# Project, sources and paths
+# Project, target, sources and paths
 #
 
 # Define project name here
 PROJECT = BLDC_4_ChibiOS
 
-# Imported source files and paths
-CHIBIOS = ChibiOS_3.0.5
-# Startup files
-include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
-# HAL-OSAL files
+# Target settings.
+MCU  = cortex-m4
+
+# Imported source files and paths.
+CHIBIOS  := ./ChibiOS
+#CONFDIR  := ./ChibiOSConfig/STM32
+CONFDIR  := ./ChibiOSConfig/PAC55xx
+BUILDDIR := ./build
+DEPDIR   := ./.dep
+
+USE_OPT += -DPAC5532
+
+# Licensing files.
+include $(CHIBIOS)/os/license/license.mk
+# Startup files.
+#include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
+include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_pac55xx.mk
+# HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
-include $(CHIBIOS)/os/hal/osal/rt/osal.mk
-# RTOS files
+#include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
+include $(CHIBIOS)/os/hal/ports/PAC/PAC55xx/platform.mk
+#include $(CONFDIR)/boards/default/board.mk
+include $(CHIBIOS)/os/hal/boards/PAC5532EVK1/board.mk
+include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
+# RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/rt/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
+include $(CHIBIOS)/os/common/ports/ARMv7-M/compilers/GCC/mk/port.mk
+# Auto-build files in ./source recursively.
+#include $(CHIBIOS)/tools/mk/autobuild.mk
+# Other files (optional).
+#include $(CHIBIOS)/test/lib/test.mk
+#include $(CHIBIOS)/test/rt/rt_test.mk
+#include $(CHIBIOS)/test/oslib/oslib_test.mk
+
 # Other files
 include hwconf/hwconf.mk
 include applications/applications.mk
@@ -121,62 +162,68 @@ ifeq ($(USE_LISPBM),1)
 endif
 
 # Define linker script file here
-LDSCRIPT= ld_eeprom_emu.ld
+#LDSCRIPT= $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/ld/STM32F407xG.ld
+LDSCRIPT= $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/ld/PAC5532.ld
+#ld_eeprom_emu.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CSRC = $(STARTUPSRC) \
-       $(KERNSRC) \
-       $(PORTSRC) \
-       $(OSALSRC) \
-       $(HALSRC) \
-       $(PLATFORMSRC) \
-       $(CHIBIOS)/os/hal/lib/streams/chprintf.c \
-       $(CHIBIOS)/os/various/syscalls.c \
-       board.c \
-       main.c \
-       comm_usb_serial.c \
-       irq_handlers.c \
-       buffer.c \
-       comm_usb.c \
-       crc.c \
-       digital_filter.c \
-       ledpwm.c \
-       mcpwm.c \
-       servo_dec.c \
-       utils.c \
-       servo_simple.c \
-       packet.c \
-       terminal.c \
-       conf_general.c \
-       eeprom.c \
-       commands.c \
-       timeout.c \
-       comm_can.c \
-       encoder.c \
-       flash_helper.c \
-       mc_interface.c \
-       mcpwm_foc.c \
-       gpdrive.c \
-       confgenerator.c \
-       timer.c \
-       i2c_bb.c \
-       spi_bb.c \
-       virtual_motor.c \
-       shutdown.c \
-       mempools.c \
-       worker.c \
-       bms.c \
-       events.c \
-       $(HWSRC) \
-       $(APPSRC) \
-       $(NRFSRC) \
-       $(CANARDSRC) \
-       $(IMUSRC) \
-       $(LORASRC) \
-       $(LZOSRC) \
-       $(BLACKMAGICSRC) \
-       qmlui/qmlui.c
+CSRC = $(ALLCSRC) \
+       $(TESTSRC) \
+       main.c
+
+#CSRC = $(STARTUPSRC) \
+#       $(KERNSRC) \
+#       $(PORTSRC) \
+#       $(OSALSRC) \
+#       $(HALSRC) \
+#       $(PLATFORMSRC) \
+#       $(CHIBIOS)/os/hal/lib/streams/chprintf.c \
+#       $(CHIBIOS)/os/various/syscalls.c \
+#       board.c \
+#       main.c \
+#       comm_usb_serial.c \
+#       irq_handlers.c \
+#       buffer.c \
+#       comm_usb.c \
+#       crc.c \
+#       digital_filter.c \
+#       ledpwm.c \
+#       mcpwm.c \
+#       servo_dec.c \
+#       utils.c \
+#       servo_simple.c \
+#       packet.c \
+#       terminal.c \
+#       conf_general.c \
+#       eeprom.c \
+#       commands.c \
+#       timeout.c \
+#       comm_can.c \
+#       encoder.c \
+#       flash_helper.c \
+#       mc_interface.c \
+#       mcpwm_foc.c \
+#       gpdrive.c \
+#       confgenerator.c \
+#       timer.c \
+#       i2c_bb.c \
+#       spi_bb.c \
+#       virtual_motor.c \
+#       shutdown.c \
+#       mempools.c \
+#       worker.c \
+#       bms.c \
+#       events.c \
+#       $(HWSRC) \
+#       $(APPSRC) \
+#       $(NRFSRC) \
+#       $(CANARDSRC) \
+#       $(IMUSRC) \
+#       $(LORASRC) \
+#       $(LZOSRC) \
+#       $(BLACKMAGICSRC) \
+#       qmlui/qmlui.c
        
 ifeq ($(USE_LISPBM),1)
   CSRC += $(LISPBMSRC)
@@ -184,100 +231,93 @@ endif
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC =
+CPPSRC = $(ALLCPPSRC)
 
-# C sources to be compiled in ARM mode regardless of the global setting.
-# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
-ACSRC =
+# List ASM source files here.
+ASMSRC = $(ALLASMSRC)
 
-# C++ sources to be compiled in ARM mode regardless of the global setting.
-# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
-ACPPSRC =
+# List ASM with preprocessor source files here.
+ASMXSRC = $(ALLXASMSRC)
 
-# C sources to be compiled in THUMB mode regardless of the global setting.
-# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
-TCSRC =
+# Inclusion directories.
+INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC)
+#INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
+#         $(HALINC) $(PLATFORMINC) \
+#         $(CHIBIOS)/os/various \
+#         $(CHIBIOS)/os/hal/lib/streams \
+#         mcconf \
+#         appconf \
+#         $(HWINC) \
+#         $(APPINC) \
+#         $(NRFINC) \
+#         $(CANARDINC) \
+#         $(IMUINC) \
+#         $(LORAINC) \
+#         $(LZOINC) \
+#         $(BLACKMAGICINC) \
+#         qmlui \
+#         qmlui/hw \
+#         qmlui/app
 
-# C sources to be compiled in THUMB mode regardless of the global setting.
-# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
-TCPPSRC =
+# Define C warning options here.
+CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes
 
-# List ASM source files here
-ASMSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
-
-INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
-         $(HALINC) $(PLATFORMINC) \
-         $(CHIBIOS)/os/various \
-         $(CHIBIOS)/os/hal/lib/streams \
-         mcconf \
-         appconf \
-         $(HWINC) \
-         $(APPINC) \
-         $(NRFINC) \
-         $(CANARDINC) \
-         $(IMUINC) \
-         $(LORAINC) \
-         $(LZOINC) \
-         $(BLACKMAGICINC) \
-         qmlui \
-         qmlui/hw \
-         qmlui/app
+# Define C++ warning options here.
+CPPWARN = -Wall -Wextra -Wundef
 
 ifeq ($(USE_LISPBM),1)
   INCDIR += $(LISPBMINC)
 endif
 
-ifdef app_custom_mkfile
-include $(app_custom_mkfile)
-endif
+# TODO: It was deleted from new version of ChibiOS
+#ifdef app_custom_mkfile
+#include $(app_custom_mkfile)
+#endif
 
 #
-# Project, sources and paths
+# Project, target, sources and paths
 ##############################################################################
 
-##############################################################################
-# Compiler settings
+# TODO: looks like this section moved with new ChibiOS
+###############################################################################
+## Compiler settings
+##
 #
-
-MCU  = cortex-m4
-
-#TRGT = arm-elf-
-#TRGT = /home/benjamin/Nextcloud/appimage/gcc-arm-none-eabi-7-2018-q2-update/bin/arm-none-eabi-
-TRGT = arm-none-eabi-
-CC   = $(TRGT)gcc
-CPPC = $(TRGT)g++
-# Enable loading with g++ only if you need C++ runtime support.
-# NOTE: You can use C++ even without C++ support if you are careful. C++
-#       runtime support makes code size explode.
-LD   = $(TRGT)gcc
-#LD   = $(TRGT)g++
-CP   = $(TRGT)objcopy
-AS   = $(TRGT)gcc -x assembler-with-cpp
-AR   = $(TRGT)ar
-OD   = $(TRGT)objdump
-SZ   = $(TRGT)size
-HEX  = $(CP) -O ihex
-BIN  = $(CP) -O binary
-
-# ARM-specific options here
-AOPT =
-
-# THUMB-specific options here
-TOPT = -mthumb -DTHUMB
-
-# Define C warning options here
-CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes -Wshadow
-
-# Define C++ warning options here
-CPPWARN = -Wall -Wextra -Wundef
-
+#MCU  = cortex-m4
 #
-# Compiler settings
-##############################################################################
+##TRGT = arm-elf-
+##TRGT = /home/benjamin/Nextcloud/appimage/gcc-arm-none-eabi-7-2018-q2-update/bin/arm-none-eabi-
+#TRGT = arm-none-eabi-
+#CC   = $(TRGT)gcc
+#CPPC = $(TRGT)g++
+## Enable loading with g++ only if you need C++ runtime support.
+## NOTE: You can use C++ even without C++ support if you are careful. C++
+##       runtime support makes code size explode.
+#LD   = $(TRGT)gcc
+##LD   = $(TRGT)g++
+#CP   = $(TRGT)objcopy
+#AS   = $(TRGT)gcc -x assembler-with-cpp
+#AR   = $(TRGT)ar
+#OD   = $(TRGT)objdump
+#SZ   = $(TRGT)size
+#HEX  = $(CP) -O ihex
+#BIN  = $(CP) -O binary
+#
+## ARM-specific options here
+#AOPT =
+#
+## THUMB-specific options here
+#TOPT = -mthumb -DTHUMB
+#
+## Define C warning options here
+#CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes -Wshadow
+#
+## Define C++ warning options here
+#CPPWARN = -Wall -Wextra -Wundef
+#
+##
+## Compiler settings
+###############################################################################
 
 ##############################################################################
 # Start of user section
@@ -299,18 +339,35 @@ ULIBDIR =
 ULIBS = -lm
 
 #
-# End of user defines
+# End of user section
 ##############################################################################
 
-ifeq ($(USE_FWLIB),yes)
-  include $(CHIBIOS)/ext/stdperiph_stm32f4/stm32lib.mk
-  CSRC += $(STM32SRC)
-  INCDIR += $(STM32INC)
-  USE_OPT += -DUSE_STDPERIPH_DRIVER
-endif
+##############################################################################
+# Common rules
+#
 
-RULESPATH = $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC
+RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
+include $(RULESPATH)/arm-none-eabi.mk
 include $(RULESPATH)/rules.mk
+
+#
+# Common rules
+##############################################################################
+
+##############################################################################
+# Custom rules
+#
+
+# TODO: Builtin in new ChibiOS
+#ifeq ($(USE_FWLIB),yes)
+#  include $(CHIBIOS)/ext/stdperiph_stm32f4/stm32lib.mk
+#  CSRC += $(STM32SRC)
+#  INCDIR += $(STM32INC)
+#  USE_OPT += -DUSE_STDPERIPH_DRIVER
+#endif
+
+#RULESPATH = $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC
+#include $(RULESPATH)/rules.mk
 
 build/$(PROJECT).bin: build/$(PROJECT).elf 
 	$(BIN) build/$(PROJECT).elf build/$(PROJECT).bin --gap-fill 0xFF
@@ -340,3 +397,7 @@ debug-start:
 
 size: build/$(PROJECT).elf
 	@$(SZ) $<
+
+#
+# Custom rules
+##############################################################################
