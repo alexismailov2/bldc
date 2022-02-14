@@ -841,6 +841,7 @@ const char* utils_hw_type_to_string(HW_TYPE hw) {
  * Check the minimum stack tp had left by counting the remaining fill characters.
  */
 int utils_check_min_stack_left(thread_t *tp) {
+#if 0
 	uint32_t *p = (uint32_t *)tp->p_stklimit;
 
 	int free = 0;
@@ -852,14 +853,22 @@ int utils_check_min_stack_left(thread_t *tp) {
 	}
 
 	return free;
+#else
+    (void)tp;
+	return 0;
+#endif
 }
 
 /*
  * Check how much stack the current thread has left now.
  */
 int utils_stack_left_now(void) {
+#if 0
 	struct port_intctx *r13 = (struct port_intctx *)__get_PSP();
 	return ((stkalign_t *)(r13 - 1) - chThdGetSelfX()->p_stklimit) * sizeof(stkalign_t);
+#else
+	return 0;
+#endif
 }
 
 const float utils_tab_sin_32_1[] = {

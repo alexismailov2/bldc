@@ -20,7 +20,10 @@
 #ifndef HW_H_
 #define HW_H_
 
+#ifndef NO_STM32
 #include "stm32f4xx_conf.h"
+#endif
+
 #include HW_HEADER
 
 #ifdef HW_HAS_DRV8301

@@ -166,12 +166,19 @@ endif
 LDSCRIPT= $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/ld/PAC5532.ld
 #ld_eeprom_emu.ld
 
+USE_OPT += -DNO_STM32
+
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
-       main.c
-
+       buffer.c \
+       main.c \
+       crc.c \
+       digital_filter.c \
+       ledpwm.c \
+       utils.c \
+       worker.c
 #CSRC = $(STARTUPSRC) \
 #       $(KERNSRC) \
 #       $(PORTSRC) \
@@ -240,7 +247,11 @@ ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
 # Inclusion directories.
-INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC)
+INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) \
+         $(HWINC) \
+         $(APPINC) \
+         mcconf \
+         appconf
 #INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
 #         $(HALINC) $(PLATFORMINC) \
 #         $(CHIBIOS)/os/various \
